@@ -34,7 +34,7 @@ public class DbMapper implements DataMapper {
         st.setInt(4, Integer.parseInt(fields.get(3).get(obj).toString()));
         st.executeUpdate();
     }
-
+//asdasfjlkajfk
     @Override
     public Object load(long id, Class clazz) throws DataMapperException {
         return null;
