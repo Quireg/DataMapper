@@ -1,7 +1,9 @@
 package exampleClasses;
-
+@Table(name = "companies")
 public class Company {
+    @Column(name = "name")
     private String name;
+    @Column(name = "address")
     private String address;
 
     public Company() {

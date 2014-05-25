@@ -1,3 +1,5 @@
+package core;
+
 import java.io.*;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -14,7 +16,7 @@ public class Mapper implements DataMapper {
 
     public Mapper() throws IOException {
         Properties props = new Properties();
-        props.load(new FileInputStream("C:\\Users\\Admin\\IdeaProjects\\JavaCodeArt\\DataMapper\\src\\config.txt"));
+        props.load(new FileInputStream("C:\\Users\\Admin\\IdeaProjects\\JavaCodeArt\\core.DataMapper\\src\\config.txt"));
         this.directory = props.getProperty("directory");
         this.configDirectory = props.getProperty("configDirectory");
         this.counters = props.getProperty("counters");
