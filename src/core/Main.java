@@ -20,9 +20,9 @@ public class Main {
 //
 //
 //        User u2 = new User("test", "test", 22, 5000);
-//        DbMapper mp = new DbMapper();
+        DbMapper mp = new DbMapper();
 //        mp.load(2, User.class);
-//        mp.load(2, User.class);
+        mp.load(2, User.class);
 //        ArrayList<Object> users =  mp.loadAll(User.class);
 //        User u3 = new User ("Vita", "Poimalo", 21, 6500);
 //        mp.update(2, u3);

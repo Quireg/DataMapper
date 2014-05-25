@@ -17,7 +17,7 @@ public class DBConnection {
         String dbms = connectionProps.getProperty("DBMS_TYPE");
         String serverName = connectionProps.getProperty("Server_Name");
         String portNumber = connectionProps.getProperty("Port");
-        String databaseName = connectionProps.getProperty("DB_Name");
+        String databaseName = connectionProps.getProperty("SCHEMA_Name");
 
         java.sql.Connection conn;
 

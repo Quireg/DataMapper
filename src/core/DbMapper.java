@@ -12,62 +12,78 @@ import java.util.ArrayList;
 public class DbMapper implements DataMapper {
     Connection conn;
 
-    DbMapper() throws SQLException, IOException {
+    public DbMapper() throws SQLException, IOException {
         conn = DBConnection.getConnection();
     }
 
     @Override
-    public void save(Object obj) throws DataMapperException, SQLException, IllegalAccessException {
+    public void save(Object obj) throws DataMapperException {
         PreparedStatement st = null;
         try {
             st = conn.prepareStatement(QueryBuilder.buildInsertSql(obj));
+            int count = 1;
+            for (Field field : obj.getClass().getDeclaredFields()) {
+                field.setAccessible(true);
+
+                System.out.println(field.getType().getTypeName());
+                if (field.getType().getTypeName().equals("java.lang.String")) {
+                    st.setString(count, field.get(obj).toString());
+                } else if (field.getType().getTypeName().equals("int")) {
+                    st.setInt(count, Integer.parseInt(field.get(obj).toString()));
+                }
+                count++;
+            }
+
+
+            st.executeUpdate();
         } catch (FileNotFoundException e) {
             e.printStackTrace();
-        }
+        } catch (SQLException e) {
+            e.printStackTrace();
 
-        int count = 1;
-        for (Field field : obj.getClass().getDeclaredFields()) {
-            field.setAccessible(true);
-
-            System.out.println(field.getType().getTypeName());
-            if (field.getType().getTypeName().equals("java.lang.String")) {
-                st.setString(count, field.get(obj).toString());
-            } else if (field.getType().getTypeName().equals("int")) {
-                st.setInt(count, Integer.parseInt(field.get(obj).toString()));
-            }
-            count++;
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+            throw new DataMapperException();
         }
 
 
-        st.executeUpdate();
     }
 
     @Override
-    public Object load(long id, Class clazz) throws DataMapperException, SQLException, IllegalAccessException, InstantiationException {
-        Object attempt = EntityCache.loadFromCache(clazz.newInstance(), id);
+    public Object load(long id, Class clazz) throws DataMapperException {
+        Object attempt = null;
+        try {
+            attempt = EntityCache.loadFromCache(clazz.newInstance(), id);
+        } catch (InstantiationException e) {
+            e.printStackTrace();
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        }
+        Object obj = null;
         if(attempt != null){
             return attempt;
         }else {
-            Object obj = clazz.newInstance();
-            String tableName = obj.getClass().getAnnotation(Table.class).name();
-            String objectId = "id" + tableName;
-            String query = "SELECT * FROM " + tableName + " WHERE " + objectId + "=" + id;
-            System.out.println(query);
-            Statement st = conn.createStatement();
-            ResultSet rs = st.executeQuery(query);
-            ResultSetMetaData rsmd = rs.getMetaData();
-            int columnsNumber = rsmd.getColumnCount();
-            String[] data = null;
-            while (rs.next()) {
-                String tempData = "";
-                for (int i = 1; i <= columnsNumber; i++) {
-                    tempData += rs.getString(i) + " ";
-                }
-                data = tempData.split(" ");
 
-            }
 
             try {
+                 obj = clazz.newInstance();
+                String tableName = obj.getClass().getAnnotation(Table.class).name();
+                String objectId = "id" + tableName;
+                String query = "SELECT * FROM " + tableName + " WHERE " + objectId + "=" + id;
+                System.out.println(query);
+                Statement st = conn.createStatement();
+                ResultSet rs = st.executeQuery(query);
+                ResultSetMetaData rsmd = rs.getMetaData();
+                int columnsNumber = rsmd.getColumnCount();
+                String[] data = null;
+                while (rs.next()) {
+                    String tempData = "";
+                    for (int i = 1; i <= columnsNumber; i++) {
+                        tempData += rs.getString(i) + " ";
+                    }
+                    data = tempData.split(" ");
+
+                }
 
                 for (int i = 0; i < clazz.getDeclaredFields().length; i++) {
                     Field[] f = clazz.getDeclaredFields();
@@ -94,6 +110,10 @@ public class DbMapper implements DataMapper {
             } catch (IllegalAccessException e) {
                 e.printStackTrace();
                 throw new DataMapperException();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            } catch (InstantiationException e) {
+                e.printStackTrace();
             }
             EntityCache.saveToCache(id, obj);
             return obj;
@@ -102,87 +122,100 @@ public class DbMapper implements DataMapper {
     }
 
     @Override
-    public ArrayList<Object> loadAll(Class clazz) throws DataMapperException, IllegalAccessException, InstantiationException, SQLException {
-        Object tempObj = clazz.newInstance();
-        String tableName = tempObj.getClass().getAnnotation(Table.class).name();
+    public ArrayList<Object> loadAll(Class clazz) throws DataMapperException {
         ArrayList<Object> result = new ArrayList<>();
-        String query = "SELECT * FROM " + tableName;
 
-        Statement st = conn.createStatement();
-        ResultSet rs = st.executeQuery(query);
-        ResultSetMetaData rsmd = rs.getMetaData();
-        int columnsNumber = rsmd.getColumnCount();
-        Object obj;
-        while (rs.next()) {
-            String[] data;
-            String tempData = "";
-            for (int i = 1; i <= columnsNumber; i++) {
-                tempData += rs.getString(i) + " ";
-            }
-            data = tempData.split(" ");
-            try {
-                obj = clazz.newInstance();
-                for (int i = 0; i < clazz.getDeclaredFields().length; i++) {
-                    Field[] f = clazz.getDeclaredFields();
-                    f[i].setAccessible(true);
-                    System.out.println(f[i].getName());
+        try {
+            Object tempObj = clazz.newInstance();
+            String tableName = tempObj.getClass().getAnnotation(Table.class).name();
+            String query = "SELECT * FROM " + tableName;
 
-
-                    if (f[i].getType().equals(String.class)) {
-                        f[i].set(obj, data[i + 1]);
-                    } else if (f[i].getType().equals(Integer.class)) {
-                        f[i].set(obj, Integer.parseInt(data[i + 1]));
-                    } else if (f[i].getType().equals(long.class)) {
-                        f[i].set(obj, Long.parseLong(data[i + 1]));
-                    } else if (f[i].getType().equals(float.class)) {
-                        f[i].set(obj, Float.parseFloat(data[i + 1]));
-                    } else if (f[i].getType().equals(double.class)) {
-                        f[i].set(obj, Double.parseDouble(data[i + 1]));
-                    } else if (f[i].getType().equals(short.class)) {
-                        f[i].set(obj, Short.parseShort(data[i + 1]));
-                    } else if (f[i].getType().equals(int.class)) {
-                        f[i].set(obj, Integer.parseInt(data[i + 1]));
-                    }
+            Statement st = conn.createStatement();
+            ResultSet rs = st.executeQuery(query);
+            ResultSetMetaData rsmd = rs.getMetaData();
+            int columnsNumber = rsmd.getColumnCount();
+            Object obj;
+            while (rs.next()) {
+                String[] data;
+                String tempData = "";
+                for (int i = 1; i <= columnsNumber; i++) {
+                    tempData += rs.getString(i) + " ";
                 }
-            } catch (IllegalAccessException e) {
-                e.printStackTrace();
-                throw new DataMapperException();
+                data = tempData.split(" ");
+                try {
+                    obj = clazz.newInstance();
+                    for (int i = 0; i < clazz.getDeclaredFields().length; i++) {
+                        Field[] f = clazz.getDeclaredFields();
+                        f[i].setAccessible(true);
+                        System.out.println(f[i].getName());
+
+
+                        if (f[i].getType().equals(String.class)) {
+                            f[i].set(obj, data[i + 1]);
+                        } else if (f[i].getType().equals(Integer.class)) {
+                            f[i].set(obj, Integer.parseInt(data[i + 1]));
+                        } else if (f[i].getType().equals(long.class)) {
+                            f[i].set(obj, Long.parseLong(data[i + 1]));
+                        } else if (f[i].getType().equals(float.class)) {
+                            f[i].set(obj, Float.parseFloat(data[i + 1]));
+                        } else if (f[i].getType().equals(double.class)) {
+                            f[i].set(obj, Double.parseDouble(data[i + 1]));
+                        } else if (f[i].getType().equals(short.class)) {
+                            f[i].set(obj, Short.parseShort(data[i + 1]));
+                        } else if (f[i].getType().equals(int.class)) {
+                            f[i].set(obj, Integer.parseInt(data[i + 1]));
+                        }
+                    }
+                } catch (IllegalAccessException e) {
+                    e.printStackTrace();
+                    throw new DataMapperException();
+                }
+                result.add(obj);
             }
-            result.add(obj);
-        }
 
 
 
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } catch (InstantiationException e) {
+            e.printStackTrace();
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        } ;
         return result;
     }
 
     @Override
-    public void update(long id, Object obj) throws DataMapperException, IllegalAccessException, InstantiationException, SQLException{
+    public void update(long id, Object obj) throws DataMapperException{
 
         PreparedStatement st = null;
         try {
             st = conn.prepareStatement(QueryBuilder.buildUpdateSql(obj, id));
+            int count = 1;
+            for (Field field : obj.getClass().getDeclaredFields()) {
+                field.setAccessible(true);
+
+                System.out.println(field.getType().getTypeName());
+                if (field.getType().getTypeName().equals("java.lang.String")) {
+                    st.setString(count, field.get(obj).toString());
+                } else if (field.getType().getTypeName().equals("int")) {
+                    st.setInt(count, Integer.parseInt(field.get(obj).toString()));
+                }
+                count++;
+            }
+
+
+            st.executeUpdate();
         } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } catch (IllegalAccessException e) {
             e.printStackTrace();
         }
 
-        int count = 1;
-        for (Field field : obj.getClass().getDeclaredFields()) {
-            field.setAccessible(true);
 
-            System.out.println(field.getType().getTypeName());
-            if (field.getType().getTypeName().equals("java.lang.String")) {
-                st.setString(count, field.get(obj).toString());
-            } else if (field.getType().getTypeName().equals("int")) {
-                st.setInt(count, Integer.parseInt(field.get(obj).toString()));
-            }
-            count++;
-        }
-
-
-        st.executeUpdate();
         EntityCache.saveToCache(id, obj);
-//UPDATE table_name SET field1=new-value1, field2=new-value2
-//        st.executeUpdate();
+
     }
 }

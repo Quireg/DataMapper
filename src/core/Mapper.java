@@ -369,7 +369,7 @@ public class Mapper implements DataMapper {
             String input = "";
             while ((line = bufferedReader.readLine()) != null) input += line + '\n';
               if(line.startsWith(String.valueOf(id))){
-                  line.replace(id + "\n", id + "" + futureObject + "\n") ;
+                  line.replace(id + "\n", id + "" + futureObject + "\n") ;//TODO figure out how to replace the line
               }
 
 

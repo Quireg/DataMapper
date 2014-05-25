@@ -3,12 +3,9 @@ package core;
 import exampleClasses.Column;
 import exampleClasses.Table;
 
-import java.io.File;
 import java.io.FileNotFoundException;
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
-import java.util.Scanner;
 
 public class QueryBuilder {
     public static String buildInsertSql(Object o) throws FileNotFoundException {
